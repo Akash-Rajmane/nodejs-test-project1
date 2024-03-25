@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <nav class="navbar bg-primary">
+            <div class="container-fluid">
+                <span class="navbar-brand mx-auto text-center h1 text-white">Blog</span>
+            </div>  
+        </nav>
+    </header>
+    <main>
+        <section class="d-flex align-items-center justify-content-center">
+            <form class="d-flex flex-column align-items-start gap-3 mt-2" id="form">
+                <div class="d-flex flex-column">
+                    <label for="title">Blog Title</label>
+                    <input type="text" id="title">
+                </div>
+                <div class="d-flex flex-column">
+                    <label for="author">Blog Author</label>
+                    <input type="text" id="author">
+                </div>
+                <div class="d-flex flex-column">
+                    <label for="content">Blog Content</label>
+                    <textarea id="content"></textarea>
+                </div>
+                <button class="btn btn-primary" id="btn" type="submit">Submit</button>
+            </form>
+        </section>
+        <section class="d-flex flex-column justify-content-center align-items-center mt-4">
+            <ul id="blogs">
+            </ul>
+        </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const form = document.getElementById("form");
+        const ul = document.getElementById("blogs");
+
+        // Function to populate the list from backend
+        async function populateListFromBackend() {
+            try {
+                const response = await axios.get("http://localhost:3000/blogs");
+                console.log(response);
+                ul.innerHTML = ''; // Clear the existing list
+                response.data.forEach(blog => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `<strong>Title:</strong> ${blog.title}<br><strong>Author:</strong> ${blog.author}<br><strong>Content:</strong> ${blog.content}`;
+
+                    const commentInput = document.createElement("input");
+                    commentInput.setAttribute("type", "text");
+                    commentInput.style.display = "block";
+                    commentInput.setAttribute("placeholder", "Add a comment");
+                    commentInput.classList.add("comment-input");
+
+                    const addCommentBtn = document.createElement("button");
+                    addCommentBtn.textContent = "Add Comment";
+                    addCommentBtn.className = "add-comment btn btn-success m-2 d-block";
+                    addCommentBtn.addEventListener("click", () => addComment(blog.id, commentInput.value));
+                    li.appendChild(commentInput);
+                    li.appendChild(addCommentBtn);
+
+                    // Check if Comments property exists and is an array
+                    if (blog.Comments && Array.isArray(blog.Comments)) {
+                        const commentsList = document.createElement("ul");
+                        blog.Comments.forEach(comment => {
+                            const commentItem = document.createElement("li");
+                            commentItem.textContent = comment.content;
+                            const deleteCommentBtn = document.createElement("button");
+                            deleteCommentBtn.textContent = "Delete";
+                            deleteCommentBtn.className = "delete-comment btn btn-danger m-2";
+                            deleteCommentBtn.addEventListener("click", () => deleteComment(comment.id));
+                            commentItem.appendChild(deleteCommentBtn);
+                            commentsList.appendChild(commentItem);
+                        });
+                        li.appendChild(commentsList);
+                    }
+
+                    ul.appendChild(li);
+                });
+
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Populate the list when the page loads
+        window.addEventListener("DOMContentLoaded", populateListFromBackend);
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const titleInput = document.getElementById("title");
+            const authorInput = document.getElementById("author");
+            const contentInput = document.getElementById("content");
+
+            if (titleInput.value === "" || authorInput.value === "" || contentInput.value === "") {
+                alert("Please enter all the fields");
+            } else {
+                try {
+                    const blog = {
+                        title: titleInput.value,
+                        author: authorInput.value,
+                        content: contentInput.value
+                    };
+                    await axios.post("http://localhost:3000/blogs", blog);
+                    populateListFromBackend(); // Update the list
+                    titleInput.value = "";
+                    authorInput.value = "";
+                    contentInput.value = "";
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        });
+
+        // Function to add a comment to a blog
+        async function addComment(blogId, commentContent) {
+            try {
+                const response = await axios.post(`http://localhost:3000/blogs/${blogId}/comments`, { content: commentContent });
+                populateListFromBackend(); // Update the list
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Function to delete a comment
+        async function deleteComment(commentId) {
+            try {
+                await axios.delete(`http://localhost:3000/comments/${commentId}`);
+                populateListFromBackend(); // Update the list
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
